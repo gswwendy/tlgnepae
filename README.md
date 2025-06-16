@@ -1,67 +1,32 @@
--- Script para destacar jogadores com vermelho neon visível através das paredes
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local attackDistance = 10 -- Distância para atacar (em studs)
 
--- Função para criar o destaque
-local function highlightCharacter(character)
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        -- Evita múltiplos destaques no mesmo personagem
-        if character:FindFirstChild("RedNeonHighlight") then return end
-
-        -- Cria o BoxHandleAdornment
-        local adornment = Instance.new("BoxHandleAdornment")
-        adornment.Name = "RedNeonHighlight"
-        adornment.Adornee = character.HumanoidRootPart
-        adornment.AlwaysOnTop = true
-        adornment.ZIndex = 10
-        adornment.Size = character.HumanoidRootPart.Size + Vector3.new(0.5, 0.5, 0.5)
-        adornment.Color3 = Color3.fromRGB(255, 0, 0)
-        adornment.Transparency = 0.25
-        adornment.Parent = character
-        adornment.Material = Enum.Material.Neon
+-- Função para verificar se um modelo é um mob (NPC) e não um jogador
+local function isMob(model)
+    local humanoid = model:FindFirstChildOfClass("Humanoid")
+    if humanoid and model ~= character then
+        -- Se não for um personagem de jogador, considera como mob
+        return not game.Players:GetPlayerFromCharacter(model)
     end
+    return false
 end
 
--- Função para remover o destaque ao sair
-local function removeHighlight(character)
-    if character and character:FindFirstChild("RedNeonHighlight") then
-        character.RedNeonHighlight:Destroy()
-    end
-end
-
--- Atualiza todos os jogadores (exceto você)
-local function updateAllHighlights()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            highlightCharacter(player.Character)
+-- Loop principal
+while true do
+    for _, model in ipairs(workspace:GetChildren()) do
+        if isMob(model) then
+            local mobRoot = model:FindFirstChild("HumanoidRootPart")
+            local humanoid = model:FindFirstChildOfClass("Humanoid")
+            if mobRoot and humanoid and humanoid.Health > 0 then
+                local distance = (humanoidRootPart.Position - mobRoot.Position).magnitude
+                if distance <= attackDistance then
+                    humanoid.Health = 0 -- Mata o mob
+                end
+            end
         end
     end
+    task.wait(0.2) -- Espera para não travar o jogo
 end
-
--- Eventos para quando um jogador entra ou respawna
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        if player ~= LocalPlayer then
-            highlightCharacter(character)
-        end
-    end)
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    if player.Character then
-        removeHighlight(player.Character)
-    end
-end)
-
--- Caso alguém respawne
-for _, player in ipairs(Players:GetPlayers()) do
-    player.CharacterAdded:Connect(function(character)
-        if player ~= LocalPlayer then
-            highlightCharacter(character)
-        end
-    end)
-end
-
--- Inicial
-updateAllHighlights()
